@@ -1,0 +1,71 @@
+﻿@page "/"
+@using System.Text 
+@using WeatherForecast.Models
+@inject IJSRuntime js
+@inject HttpClient http
+
+@if (forecast == null)
+{
+    <p><em>@message</em></p>
+}
+else
+{
+    <h1>Hello, world!</h1>
+
+    <p>Welcome to your new app.</p>
+
+    <h2>Latitude: @pos.Latitude, Longitude: @pos.Longitude</h2>
+    <SurveyPrompt Title = "How is Blazor working for you?" />
+    <div class="card-group">
+        @foreach (var item in forecast.Daily.Take(5))
+        {
+            <DailyForecast 
+                           Seconds="@item.Dt"
+                           LowTemp="@item.Temp.Min"
+                           HighTemp="@item.Temp.Max"
+                           Description="@item.Weather[0].Description"
+                           Icon="@item.Weather[0].Icon"/>
+        }
+    </div>
+}
+
+@code{
+    string message = "Loading...";
+    Position pos;
+
+    OpenWeather forecast;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await GetPosition();
+            await GetForecast();
+        }
+        catch (Exception)
+        {
+            message = "Error encountered.";
+        }
+    }
+
+    private async Task GetPosition()
+    {
+        pos = await js.InvokeAsync<Position>("bweInterop.getPosition");
+    }
+
+    private async Task GetForecast()
+    {
+        string APIKey = "986e6702bd49e2ceab5ba04df831db73";
+        StringBuilder url = new StringBuilder();
+
+        url.Append("https://api.openweathermap.org");
+        url.Append("/data/2.5/onecall?");
+        url.Append($"lat={pos.Latitude}");
+        url.Append($"&lon={pos.Longitude}");
+        url.Append("&exclude=current,minutely,hourly,alerts");
+        url.Append("&units=imperial");
+        url.Append($"&appid={APIKey}");
+
+        forecast = await http.GetFromJsonAsync<OpenWeather>(url.ToString());
+    }
+}
